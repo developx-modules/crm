@@ -1,109 +1,45 @@
 <template>
   <div>
-    <Pagen
-        :records="records"
-        :totalOrders="totalOrders"
-        :totalPrice="totalPrice"
-        :pages="pages"
-        v-on:changePageParent="changePageParent"
-        :num="num"
-    />
-    <Filters
-        :filters="filters"
-        v-on:parentFilter="parentFilter"
-        :key="keys['Filters']"
-    />
+    <Pagen v-on:changePageParent="changePageParent" :num="num"/>
+    <Filters v-on:changeFilterParent="changeFilterParent" :urlParams="urlParams"/>
     <div class="orders">
-      <div class="table" v-if="orders">
+      <div class="table" v-if="$store.getters['orders/getOrders']">
         <div class="table__item">
           <div class="table__row">Данные заказа</div>
           <div class="table__row">Доставка / Оплата</div>
           <div class="table__row table__row--prods">Товары</div>
           <div class="table__row">Статусы</div>
-          <div class="table__row"><a href="javascript:void(0)" v-on:click="getOasisData">Поставщик</a></div>
-          <div class="table__row"><a href="javascript:void(0)" v-on:click="getYandexData">Я.Доставка</a></div>
+          <div class="table__row">Поставщик</div>
+          <div class="table__row">Я.Доставка</div>
         </div>
-        <div class="table__item" v-for="(order, i) in orders" :key="order.ID">
+        <div class="table__item" v-for="(order, i) in $store.getters['orders/getOrders']" :key="order.ID">
           <div class="table__top">
             <span class="order-num">{{ i + 1  }}</span>
             <a target="_blank" :href="site + '/bitrix/admin/sale_order_view.php?ID=' + order.ID + '&filter=Y&set_filter=Y&lang=ru'">BitrixId {{ order.ID }}</a>
             <span>{{ order.DATE_INSERT }}</span>
           </div>
-          <!--<td>
-            <p>{{ order.USER_LOGIN + '(' + order.USER_ID + ')'}}</p>
-            <p>{{ order.USER_EMAIL }}</p>
-            <p>{{ order.USER_NAME + ' ' + order.USER_LAST_NAME}}</p>
-          </td>-->
           <div class="table__row">
-            <Props
-                :site="site"
-                :userId="order.USER_ID"
-                :props="order.PROPS"
-                :comments="order.COMMENTS"/>
+            <Props :orderKey="i"/>
           </div>
           <div class="table__row">
-            <Delivery
-                :deliveryList="deliveryList"
-                :deliveryId="order.DELIVERY_ID"
-                :deliveryType="order.DELIVERY_TYPE"
-                :orderId="order.ID"
-                v-on:setDeliveryParent="setDeliveryParent"/>
+            <Delivery :orderKey="i"/>
             {{ order.PAYMENT_NAME }}
           </div>
           <div class="table__row table__row--prods">
-            <div class="product__list">
-              <div class="product" v-for="prod in order.PRODS" :key="prod.ID">
-                <span class="product__info product__cell">
-                  <a class="product__lnk" target="_blank" :href="site + prod.DETAIL_PAGE_URL">{{ prod.NAME }}</a>
-                  <span class="product__id">id: <a target="_blank" :href="site + '/bitrix/admin/iblock_element_edit.php?IBLOCK_ID=' + prod.CATALOG_XML_ID + '&type=catalog&ID=' + prod.PRODUCT_ID + '&lang=ru'">{{ prod.ID }}</a></span>
-                  <span class="product__id">арт: <a :href="'https://www.oasiscatalog.com/item/' + prod.OASIS_ID" target="_blank">{{ prod.OASIS_ID }}</a></span>
-                  <br>
-                  <span v-if="prod.DISCOUNT_PRICE > 0">
-                    скидка: {{ prod.DISCOUNT_PRICE}}<br>
-                  </span>
-                </span>
-                <span class="product__qty product__cell">{{ prod.QUANTITY }} шт</span>
-                <span class="product__price product__cell">{{ parseInt(prod.PRICE) + ' руб ' }}</span>
-              </div>
-            </div>
+            <Prods :orderKey="i"/>
             <div class="total">
               Итого: {{ order.PRICE }} руб
               (доставка {{ order.PRICE_DELIVERY }} руб)
             </div>
           </div>
           <div class="table__row">
-            <Status
-                :statuses="statuses"
-                :statusId="order.STATUS_ID"
-                :orderId="order.ID"
-                v-on:setStatusParent="setStatusParent"/>
+            <Status :orderKey="i"/>
           </div>
           <div class="table__row">
-            <span v-if="oasisOrders[i] && oasisOrders[i]['loaded']">
-              <Oasis
-                  :oasisOrder="oasisOrders[i]"
-                  :orderId="order.ID"
-                  v-on:setOasisIdParent="setOasisIdParent"
-                  v-on:removeOasisIdParent ="removeOasisIdParent"
-                  v-on:createOasisOrderParent="createOasisOrderParent"
-              />
-            </span>
+            <Oasis :orderKey="i"/>
           </div>
           <div class="table__row">
-            <span v-if="yandexOrders[i] && yandexOrders[i]['loaded']">
-              <span v-if="oasisOrders[i]['id']">
-                <YandexDelivery
-                    :yandexOrder="yandexOrders[i]"
-                    :orderId="order.ID"
-                    :cabinetId="cabinetId"
-                    v-on:setYandexIdParent="setYandexIdParent"
-                    v-on:createYandexOrderParent="createYandexOrderParent"
-                />
-              </span>
-              <span v-else>
-                Сначала задайте заказ в oasis
-              </span>
-            </span>
+            <YandexDelivery :orderKey="i"/>
           </div>
         </div>
       </div>
@@ -115,413 +51,85 @@
   </div>
 </template>
 
-
 <script>
-
 import Status from "@/components/Status";
 import Oasis from "@/components/Oasis";
 import YandexDelivery from "@/components/YandexDelivery";
 import Delivery from "@/components/Delivery";
+import Prods from "@/components/Prods";
 import Props from "@/components/Props";
-import Consts from '../consts'
 import Filters from "@/components/Filters";
 import Pagen from "@/components/Pagen";
 
-
 export default {
-  components: {Pagen, Props, Delivery, YandexDelivery, Oasis, Status, Filters},
+  components: {Pagen, Props, Prods, Delivery, YandexDelivery, Oasis, Status, Filters},
   data() {
-    var Data = new Date();
     return{
-      orders: [],
-      records: 0,
-      pages: 0,
-      totalPrice: 0,
-      totalOrders: 0,
-      num: 1,
-      statuses: [],
-      oasisOrders: [],
-      yandexOrders: [],
-      deliveryList: [],
-      server: process.env.VUE_APP_SERVER,
-      site: process.env.VUE_APP_SITE,
-      cabinetId: process.env.VUE_APP_CABINET_ID,
-      apiKey: process.env.VUE_APP_API_KEY,
-      filters: {
-        size: {
-          name: 'Заказов',
-          values: [
-            {
-              name: '20',
-              value: 20,
-            },
-            {
-              name: '40',
-              value: 40
-            },
-            {
-              name: '80',
-              value: 80
-            }
-          ]
-        },
-        days: {
-          name: 'Дата',
-          values: [
-            {
-              name: 'Все',
-              value: 999
-            },
-            {
-              name: 'Сегодня',
-              value: 1,
-            },
-            {
-              name: 'Вчера',
-              value: 2
-            },
-            {
-              name: 'Позавчера',
-              value: 3
-            },
-            {
-              name: 'За 7 дней',
-              value: 7
-            },
-            {
-              name: 'За эту неделю',
-              value: Data.getDay(),
-            },
-            {
-              name: 'За 30 дней',
-              value: 30
-            },
-            {
-              name: 'За этот месяц',
-              value: Data.getDate()
-            }
-          ]
-        },
-        status: {
-          name: 'Статус',
-          values: [],
-          selected: 0
-        }
+      urlParams: {
+        num: 1
       },
-      keys: {
-        Filters: 0
-      }
+      num: 1,
+      site: process.env.VUE_APP_SITE
     }
   },
   mounted() {
-    /*this.getStatuses().then(() => {
-      this.setFilterDefaults();
-      this.getOrders();
-    });*/
-
+    this.getUrlParams();
+    this.setNum();
   },
   methods: {
-    async getStatuses () {
-      const response = await this.axios.get(this.server + '/api/?action=GetStatuses' + '&apiKey=' + this.apiKey);
-      this.statuses = response.data;
-      for (var i in this.statuses){
-        var status = this.statuses[i];
-        this.filters['status']['values'][i] = {
-          name: status['NAME'],
-          value: status['ID']
-        }
-      }
-      i++;
-      this.filters['status']['values'][i] = {
-        name: 'Все, кроме выполенных и отмененных',
-        value: 0
-      }
+    getOrders: function () {
+      this.$store.dispatch("orders/fetchOrders", this.urlParams);
     },
     changePageParent: function (num) {
-      this.num = num;
+      this.urlParams['num'] = num;
+      this.setNum();
       this.setUrlParams();
       this.getOrders();
     },
-    parentFilter: function (filterData) {
-      console.log(filterData);
+    changeFilterParent: function (filterData) {
       for(var i in filterData){
         if (filterData[i] !== "undefined") {
-          this.filters[i]['selected'] = filterData[i];
+          this.urlParams[i] = filterData[i];
         }
       }
       this.setUrlParams();
       this.getOrders();
-    },
-    getOrders: function () {
-      this.orders = [];
-      this.axios
-          .get(this.server + '/api/?action=GetOrders&' + this.getOrdersFilterParams() + '&apiKey=' + this.apiKey)
-          .then(response => {
-            this.orders = response.data.orders;
-            this.records = response.data.records;
-            this.pages = response.data.pages;
-            this.totalPrice = response.data.total;
-            if (typeof response.data.orders !== "undefined" && response.data.orders !== null) {
-              this.totalOrders = response.data.orders.length;
-            } else {
-              this.totalOrders = 0;
-            }
-            this.getOasisData();
-            this.getYandexData();
-            this.$forceUpdate();
-          });
-    },
-    getOrdersFilterParams: function () {
-      var statues = 0;
-      if (this.filters['status']['selected']){
-        statues = this.filters['status']['selected'];
-      }
-      return 'size=' + this.filters['size']['selected'] + '&num=' + this.num + '&days=' + this.filters['days']['selected'] + '&status=' + statues;
-    },
-    setFilterDefaults: function () {
-      var params = this.getUrlParams();
-
-      for (var code in this.filters){
-        var filter = this.filters[code];
-        if (typeof params[code] !== "undefined") {
-          filter['selected'] = params[code];
-          filter['key'] = 0;
-        } else {
-          if (typeof filter['selected'] === "undefined") {
-            filter['selected'] = filter['values'][0]['value'];
-            filter['key'] = 0;
-          }
-        }
-      }
-      if (typeof params['num'] !== "undefined") {
-        this.num = params['num'];
-      }
-      this.keys['Filters']++;
-    },
-    getUrlParams: function (){
-      return window
-          .location
-          .search
-          .replace('?','')
-          .split('&')
-          .reduce(
-              function(p,e){
-                var a = e.split('=');
-                p[ decodeURIComponent(a[0])] = decodeURIComponent(a[1]);
-                return p;
-              },
-              {}
-          );
     },
     setUrlParams: function ()
     {
-      var params = this.getOrdersFilterParams();
       if (history.pushState) {
-        var newurl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?' + params;
-        window.history.pushState({path:newurl},'',newurl);
+        var newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?' + this.urlParamsString();
+        window.history.pushState({ path: newUrl }, '', newUrl);
       }
     },
-    getOasisData: function () {
-      for (var i in this.orders) {
-        var oasisId = this.orders[i]['PROPS']['OASIS_ID']['VALUE'];
-        this.oasisOrders[i] = {};
-        this.oasisOrders[i]['loaded'] = false;
-        this.oasisOrders[i]['id'] = oasisId;
-        if (oasisId) {
-          this.getOasisOrder(i);
-        } else {
-          this.oasisOrders[i]['loaded'] = true;
-        }
-        //delete this.orders[i]['PROPS']['OASIS_ID']['VALUE'];
-      }
-      this.$forceUpdate();
-    },
-    getYandexData: function (){
-      if (Consts.DELIVERY == 'yandex'){
-        var ids = [];
-        for(var i in this.orders) {
-          var yandexId = this.orders[i]['PROPS']['YANDEX_ID']['VALUE'];
-          this.yandexOrders[i] = {};
-          this.yandexOrders[i]['loaded'] = false;
-          if (yandexId) {
-            this.yandexOrders[i]['id'] = yandexId;
-            ids[ids.length] = yandexId;
-          } else {
-            this.yandexOrders[i]['loaded'] = true;
-          }
+    getUrlParams: function () {
+      var params = window
+          .location
+          .search
+          .replace('?', '');
 
-        }
-        this.$forceUpdate();
-        if (ids.length > 0) {
-          this.getYandexOrders(ids);
+      if (params) {
+        var paramsArr = params.split('&')
+            .reduce(
+                function (p, e) {
+                  var a = e.split('=');
+                  p[decodeURIComponent(a[0])] = decodeURIComponent(a[1]);
+                  return p;
+                },
+                {}
+            );
+        for (let i in paramsArr) {
+          this.urlParams[i] = paramsArr[i];
         }
       }
     },
-    setStatusParent: function (id, orderId)
-    {
-      this.axios
-          .get(this.server + '/api/?action=SetStatus&id=' + id + '&orderId=' + orderId + '&apiKey=' + this.apiKey)
-          .then(response => {
-            if (response.data.SUCCESS) {
-              /*console.log(this.getOrderIndexById(orderId));
-              console.log(this.orders);
-              console.log(id);*/
-              this.orders[this.getOrderIndexById(orderId)]['STATUS_ID'] = id;
-            }
-          });
+    urlParamsString: function () {
+      return Object.keys(this.urlParams).map((k) => {
+        return encodeURIComponent(k) + "=" + encodeURIComponent(this.urlParams[k]);
+      }).join('&');
     },
-    setDeliveryParent: function (id, orderId)
-    {
-      this.axios
-          .get(this.server + '/api/?action=SetDelivery&id=' + id + '&orderId=' + orderId + '&apiKey=' + this.apiKey)
-          .then(response => {
-            if (response.data.SUCCESS) {
-              this.orders[this.getOrderIndexById(orderId)]['DELIVERY_ID'] = id;
-            } else {
-              alert(response.data['ERROR']);
-            }
-          });
-    },
-    /* Oasis */
-    /*getOasisOrders: function () {
-      for(var i in this.orders) {
-        var oasisId = this.orders[i]['PROPS']['OASIS_ID']['VALUE'];
-        if (oasisId) {
-          this.getOasisOrderById(oasisId);
-        }
-      }
-    },*/
-    getOasisOrder: function (i) {
-      if (this.oasisOrders[i]['id']) {
-        this.oasisOrders[i]['loaded'] = false;
-        this.axios
-            .get(this.server + '/api/?action=GetOasisOrderById&id=' + this.oasisOrders[i]['id'] + '&apiKey=' + this.apiKey)
-            .then(response => {
-              this.oasisOrders[i]['data'] = response.data;
-              this.oasisOrders[i]['loaded'] = true;
-              this.$forceUpdate();
-            });
-      }
-    },
-    setOasisIdParent: function (oasisId, orderId) {
-      var i = this.getOrderIndexById(orderId);
-      this.oasisOrders[i]['loaded'] = false;
-      this.axios
-          .get(this.server + '/api/?action=SetOasisOrder&id=' + oasisId + '&orderId=' + orderId + '&apiKey=' + this.apiKey)
-          .then(response => {
-            if (response.data.SUCCESS) {
-              this.oasisOrders[i]['id'] = oasisId;
-              this.getOasisOrder(i);
-              this.$forceUpdate();
-            } else if (response.data.ERROR){
-              alert(response.data.ERROR)
-            }
-          });
-    },
-    createOasisOrderParent: function (orderId) {
-      var i = this.getOrderIndexById(orderId);
-      this.oasisOrders[i]['loaded'] = false;
-      this.axios
-          .get(this.server + '/api/?action=CreateOasisOrder&id=' + orderId + '&apiKey=' + this.apiKey)
-          .then(response => {
-            if (response.data.SUCCESS) {
-              /*this.oasisOrders[i]['id'] = oasisId;
-              this.getOasisOrder(i);
-              this.$forceUpdate();*/
-            } else if (response.data.ERROR){
-              alert(response.data.ERROR)
-            }
-          });
-    },
-    removeOasisIdParent: function (orderId) {
-      var i = this.getOrderIndexById(orderId);
-      this.oasisOrders[i]['loaded'] = false;
-      this.$forceUpdate();
-      this.axios
-          .get(this.server + '/api/?action=RemoveOasisOrder&orderId=' + orderId + '&apiKey=' + this.apiKey)
-          .then(response => {
-            if (response.data.SUCCESS) {
-              this.oasisOrders[i]['id'] = null;
-              this.oasisOrders[i]['data'] = null;
-              this.oasisOrders[i]['loaded'] = true;
-              this.$forceUpdate();
-            } else if (response.data.ERROR){
-              alert(response.data.ERROR)
-            }
-          });
-    },
-
-
-    /* Yandex  */
-    getYandexOrders: function (ids) {
-      this.axios
-          .get(this.server + '/api/?action=GetOrdersStatus&ids=' + ids.join(',') + '&apiKey=' + this.apiKey)
-          .then(response => {
-            if (response.data.code == 200){
-              var orders = {};
-              for(var i in response.data.response) {
-                orders[response.data.response[i]['id']] = response.data.response[i]['status'];
-              }
-
-              for(var yi in this.yandexOrders) {
-                var yOrder = this.yandexOrders[yi];
-                if (yOrder['id'] && typeof orders[yOrder['id']] !== "undefined"){
-                  yOrder['data'] = orders[yOrder['id']]
-                }
-                this.yandexOrders[yi]['loaded'] = true;
-              }
-              this.$forceUpdate();
-            }
-          });
-    },
-    getYandexOrder: function (i) {
-      if (this.yandexOrders[i]['id']) {
-        this.axios
-            .get(this.server + '/api/?action=GetYandexOrderById&id=' + this.yandexOrders[i]['id'] + '&apiKey=' + this.apiKey)
-            .then(response => {
-              this.yandexOrders[i]['data'] = response.data;
-            });
-      }
-    },
-    setYandexIdParent: function (orderId, yandexId)
-    {
-      this.axios
-          .get(this.server + '/api/?action=SetYandexOrder&id=' + yandexId + '&orderId=' + orderId + '&apiKey=' + this.apiKey)
-          .then(() => {
-            this.orders[this.getOrderIndexById(orderId)].PROPS.YANDEX_ID.VALUE = yandexId;
-          });
-    },
-    createYandexOrderParent: function (orderId)
-    {
-      var i = this.getOrderIndexById(orderId);
-      this.yandexOrders[i]['loaded'] = false;
-      /*console.log(i);
-      console.log(this.yandexOrders[i]);*/
-      this.$forceUpdate();
-      this.axios
-          .get(this.server + '/api/?action=CreateYandexOrder&orderId=' + orderId + '&apiKey=' + this.apiKey)
-          .then(response => {
-            console.log(response);
-            if (response['data']['code'] == 200) {
-              this.yandexOrders[i]['id'] = response.data.response[0];
-              //console.log(this.yandexOrders[i]);
-              this.getYandexOrders([response.data.response[0]]);
-            } else if (response.data.ERROR){
-              alert(response.data.ERROR)
-            } else {
-              alert('Ошибка')
-            }
-          });
-    },
-
-    getOrderIndexById: function (id)
-    {
-      for (var i in this.orders){
-        if (this.orders[i]['ID'] == id){
-          return i;
-        }
-      }
-      return false;
+    setNum: function () {
+      this.num = this.urlParams['num'];
     }
   },
   watch: {
@@ -529,22 +137,24 @@ export default {
 }
 </script>
 
-<style>
+<style lang="scss">
 *{
   box-sizing: border-box;
 }
-body #app{
-  color: #fff;
-}
+
 body{
   margin: 0;
   padding: 0;
   background-color: #3e3e3e;
   color: #fff;
+  #app{
+    color: #fff;
+  }
+  a{
+    color: #87b1ff;
+  }
 }
-body a{
-  color: #87b1ff;
-}
+
 table{
   text-align: left;
   border-spacing: 0;
@@ -561,48 +171,9 @@ p{
   padding: 0;
   margin: 0 0 5px;
 }
-.product{
-  margin-bottom: 5px;
-  background-color: #313131;
-  border-radius: 5px;
-  position: relative;
-  padding-bottom: 28px;
-  display: inline-block;
-  width: 100%;
-  float: left;
-}
-.product__lnk{
-  float: left;
-  width: 100%;
-}
-.product__qty{
-  background-color: #67005f;
-  padding: 3px 5px;
-  border-radius: 5px;
-  position: absolute;
-  bottom: 5px;
-  left: 5px;
-}
-.product__price{
-  background-color: #67005f;
-  padding: 3px 5px;
-  border-radius: 5px;
-  position: absolute;
-  bottom: 5px;
-  right: 5px;
-}
-.product__info{
-  padding: 5px;
-  float: left;
-  width: 100%;
-}
-
-.product__id{
-  float: left;
-  background-color: #5e5e5e;
-  padding: 0 3px;
-  border-radius: 5px;
-  margin: 0 5px 0 0;
+a{
+  color: #0059ff;
+  text-decoration: none;
 }
 
 input{
@@ -614,7 +185,6 @@ input{
   border: none;
   max-width: 100%;
 }
-
 .btn{
   padding: 5px 10px;
   background-color: #333;
@@ -624,64 +194,67 @@ input{
   display: inline-block;
 
 }
-
 .id-block{
   position: relative;
+  p{
+    font-size: 12px;
+    margin: 0 0 5px
+  }
+  &__btn-line{
+    background-repeat: no-repeat;
+    background-position: 50%;
+    position: absolute;
+    border: none;
+    width: 35px;
+    height: 35px;
+    right: 0;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' version='1.1' id='Capa_1' x='0px' y='0px' width='484.5px' height='484.5px' viewBox='0 0 484.5 484.5' style='enable-background:new 0 0 484.5 484.5;' xml:space='preserve'%3E%3Cg%3E%3Cg fill='%23fff'%3E%3Cpolygon points='433.5,114.75 433.5,216.75 96.9,216.75 188.7,124.95 153,89.25 0,242.25 153,395.25 188.7,359.55 96.9,267.75 484.5,267.75 484.5,114.75 '/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");background-size: 50%;
+    background-color: #006ac5;
+    border-radius: 5px;
+  }
 }
-.id-block p{
-  font-size: 12px;
-  margin: 0 0 5px
-}
-.id-block__btn-line{
-  background-repeat: no-repeat;
-  background-position: 50%;
-  position: absolute;
-  border: none;
-  width: 35px;
-  height: 35px;
-  right: 0;
-  cursor: pointer;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' version='1.1' id='Capa_1' x='0px' y='0px' width='484.5px' height='484.5px' viewBox='0 0 484.5 484.5' style='enable-background:new 0 0 484.5 484.5;' xml:space='preserve'%3E%3Cg%3E%3Cg fill='%23fff'%3E%3Cpolygon points='433.5,114.75 433.5,216.75 96.9,216.75 188.7,124.95 153,89.25 0,242.25 153,395.25 188.7,359.55 96.9,267.75 484.5,267.75 484.5,114.75 '/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");background-size: 50%;
-  background-color: #006ac5;
-  border-radius: 5px;
-}
-a{
-  color: #0059ff;
-  text-decoration: none;
-}
+
 .orders{
   margin-bottom: 34px;
   display: inline-block;
   width: 100%;
+  &__r{
+    float: left;
+    background-color: #555555;
+    width: 100%;
+    box-sizing: border-box;
+    text-align: left;
+    .btn-provider{
+      width: 100%;
+      margin-bottom: 10px;
+      float: right;
+      clear: both;
+    }
+  }
+  &__l{
+    float: left;
+    width: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+  &__btns{
+    float: right;
+    width: 15%;
+  }
+  &__empty{
+    text-align: center;
+    color: #fff;
+    fill: #505050;
+    div{
+      font-size: 20px;
+      font-weight: bold;
+      margin: 30px 0;
+    }
+  }
 }
-.orders__r{
-  float: left;
-  background-color: #555555;
-  width: 100%;
-  box-sizing: border-box;
-  text-align: left;
-}
-.orders__r .btn-provider{
-  width: 100%;
-  margin-bottom: 10px;
-  float: right;
-  clear: both;
-}
-.orders__l{
-  float: left;
-  width: 100%;
-  padding: 20px;
-  box-sizing: border-box;
-}
-.filter__btns{
-  float: right;
-  width: 15%;
-}
-.product__list{
-  max-height: 350px;
-  overflow: auto;
-  padding: 0 0 10px;
-}
+
+
 .total {
   color: #daff00;
 }
@@ -745,14 +318,5 @@ a{
   width: 25%;
 }
 
-.orders__empty{
-  text-align: center;
-  color: #fff;
-  fill: #505050;
-}
-.orders__empty div{
-  font-size: 20px;
-  font-weight: bold;
-  margin: 30px 0;
-}
+
 </style>

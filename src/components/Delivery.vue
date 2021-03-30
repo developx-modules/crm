@@ -1,14 +1,6 @@
 <template>
   <div>
-    {{ type[deliveryType] }}
-    <!--<ul>
-      <li v-for="delivery in deliveryList"
-          :key="delivery.ID"
-          :class="{ selected: delivery.ID == deliveryId }"
-          v-on:click="$emit('setDeliveryParent', delivery.ID, orderId)">
-        {{ delivery.NAME }}
-      </li>
-    </ul>-->
+    {{ type[deliveryId] }}
   </div>
 </template>
 
@@ -22,9 +14,10 @@ export default {
         COURIER: 'Курьер',
         PICKUP: 'Самовывоз'
       },
+      deliveryId: this.$store.getters['orders/getDeliveryType'](this.orderKey)
     }
   },
-  props: ['deliveryList', 'deliveryId', 'orderId', 'deliveryType'],
+  props: ['orderKey']
 }
 </script>
 

@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="filter">
-      <div class="filter__item"  v-for="(filter, code) in filters"  :key="filter['name']">
+      <div class="filter__item"  v-for="(filter, code) in $store.getters['filters/getTopFilters']"  :key="filter['name']">
         <span>{{ filter['name'] }}</span>
         <select :name="code" v-model="filterData[code]">
           <option
@@ -11,14 +11,6 @@
             {{ value['name'] }}
           </option>
         </select>
-      </div>
-      <div class="filter__item">
-        <span>Поиск по id заказа</span>
-        <input v-model="filterId">
-      </div>
-      <div class="filter__item">
-        <span>Поиск по телефону</span>
-        <input v-model="filterPhone">
       </div>
       <button v-on:click="filter" class="btn btn__filter">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 511 511.99982">
@@ -30,95 +22,105 @@
   </div>
 </template>
 
-
 <script>
-
 export default {
-  props: ['filters'],
   data() {
     return{
       filterData: {
         size: '',
         days: '',
         status: ''
-      },
-      filterId: '',
-      filterPhone: ''
+      }
     }
   },
+  props: ['urlParams', 'filterKey'],
   mounted() {
-    //console.log('mounted');
-    this.setFilter();
+    this.$store.dispatch("filters/fetchStatuses").then(() => {
+      this.setFilter();
+      this.filter();
+    });
   },
-  /*beforeUpdate() {
-    console.log('beforeUpdate');
-    this.setFilter();
-  },*/
   methods: {
     setFilter: function () {
-      for(var i in this.filters){
-        this.filterData[i] = this.filters[i]['selected'];
+      var params = this.urlParams;
+      var storeFilters = this.$store.getters['filters/getTopFilters'];
+      for (var code in this.filterData){
+        if (storeFilters[code]['values'].length > 0) {
+          var val = storeFilters[code]['values'][0]['value'];
+          if (typeof params[code] !== "undefined") {
+            val = params[code];
+          }
+          this.filterData[code] = val;
+        }
       }
     },
     filter: function () {
-      this.$emit('parentFilter', this.filterData);
+      this.$emit('changeFilterParent', this.filterData);
     },
+  },
+  watch: {
+    'urlParams': {
+      handler: function () {
+        this.setFilter();
+      },
+      deep: true
+    }
   }
 }
 </script>
 
-<style scoped>
-.filter{
-  float: left;
-  width: 100%;
-  padding: 20px;
-  background-color: #4a4a4a;
-}
+<style scoped lang="scss">
+  .filter {
+    float: left;
+    width: 100%;
+    padding: 20px;
+    background-color: #4a4a4a;
 
-.filter__item{
-  text-align: left;
-  float: left;
-  width: 18%;
-  margin-right: 1%;
-}
-.filter__item-info{
-  background-color: #3e3e3e;
-  padding: 5px 10px;
-  line-height: 21px;
-  font-size: 15px;
-  border-radius: 5px;
-  box-shadow: 0px 0px 5px #3e3e3e;
-}
-.filter__item span{
-  float: left;
-  font-size: 14px;
-  width: 100%;
-  margin-bottom: 10px;
-}
-.filter__item select{
-  width: 100%;
-  padding: 8px 10px;
-  border-radius: 5px;
-  font-size: 16px;
-  box-sizing: border-box;
-  background-color: #ddd;
-  border: none;
-}
-.filter__item input{
-  width: 100%;
-}
-.btn__filter{
-  float: right;
-  height: 36px;
-  width: 5%;
-  margin-top: 26px;
-  border-radius: 5px;
-  background-color: #006ac5;
-}
-.btn__filter svg{
-  fill: #cccccc;
-  padding: 3px;
-  margin-top: 2px;
-  width: 25px;
-}
+    &__item-info{
+      background-color: #3e3e3e;
+      padding: 5px 10px;
+      line-height: 21px;
+      font-size: 15px;
+      border-radius: 5px;
+      box-shadow: 0px 0px 5px #3e3e3e;
+    }
+    &__item {
+      text-align: left;
+      float: left;
+      width: 18%;
+      margin-right: 1%;
+      span {
+        float: left;
+        font-size: 14px;
+        width: 100%;
+        margin-bottom: 10px;
+      }
+      select {
+        width: 100%;
+        padding: 8px 10px;
+        border-radius: 5px;
+        font-size: 16px;
+        box-sizing: border-box;
+        background-color: #ddd;
+        border: none;
+      }
+      input{
+        width: 100%;
+      }
+    }
+  }
+  .btn__filter{
+    float: right;
+    height: 36px;
+    width: 5%;
+    margin-top: 26px;
+    border-radius: 5px;
+    background-color: #006ac5;
+    svg{
+      fill: #cccccc;
+      padding: 3px;
+      margin-top: 2px;
+      width: 25px;
+    }
+  }
 </style>

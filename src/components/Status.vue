@@ -1,11 +1,11 @@
 <template>
   <div>
     <ul>
-      <li v-for="status in statuses"
-          :key="status.ID"
-          :class="{ selected: status.ID == statusId }"
-          v-on:click="$emit('setStatusParent', status.ID, orderId)">
-        {{ status.NAME }}
+      <li v-for="status in $store.getters['filters/getStatuses']"
+          :key="status['value']"
+          :class="{ selected: status['value'] == statusId }"
+          v-on:click="setStatus(status.value)">
+        {{ status['name'] }}
       </li>
     </ul>
   </div>
@@ -15,7 +15,35 @@
 <script>
 
 export default {
-  props: ['statuses', 'statusId', 'orderId'],
+  data() {
+    return {
+      statusId: false
+    }
+  },
+  props: ['orderKey'],
+  methods: {
+    setStatus: function (id) {
+      this.$store.dispatch("orders/setStatus", {id: id, orderKey: this.orderKey});
+    },
+    beforeDestroy() {
+      this.unsubscribe();
+    },
+    getStatus: function ()
+    {
+      this.statusId = this.$store.getters['orders/getOrderStatus'](this.orderKey);
+    }
+  },
+  mounted() {
+    this.getStatus();
+    this.unsubscribe = this.$store.subscribe((mutation) => {
+      if (
+           mutation['payload']['orderKey'] == this.orderKey &&
+           mutation['type'] == 'orders/setStatus'
+       ) {
+          this.getStatus();
+       }
+    });
+  }
 }
 </script>
 

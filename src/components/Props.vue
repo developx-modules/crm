@@ -20,43 +20,52 @@
 <script>
 
 export default {
-  props: ['props', 'comments', 'userId', 'site'],
+  data() {
+    return {
+      userId: this.$store.getters['orders/getUserId'](this.orderKey),
+      props: this.$store.getters['orders/getProps'](this.orderKey),
+      comments: this.$store.getters['orders/getComments'](this.orderKey),
+      site: process.env.VUE_APP_SITE
+    }
+  },
+  props: ['orderKey'],
 }
 </script>
 
-<style scoped>
-.prop{
+<style scoped lang="scss">
+  .prop{
+    span{
+      border-top: 1px solid #696969;
+      padding: 0 3px;
+      margin-bottom: 5px;
+      float: left;
+    }
+    &:last-child{
+      border-bottom: none;
 
-}
-.prop:first-child span{
-  border-top: none;
-}
-.prop span{
-  border-top: 1px solid #696969;
-  padding: 0 3px;
-  margin-bottom: 5px;
-  float: left;
-}
-.prop:last-child{
-  border-bottom: none;
-}
-li.selected{
-  background-color: #00a92c;
-  color: #fff;
-  cursor: inherit;
-}
-.prop__name{
-  display: inline-block;
-  background-color: #5e5e5e;
-  padding: 0 5px;
-  border-radius: 5px;
-  float: left;
-  clear: both;
-  margin-right: 5px;
-  margin-bottom: 5px;
-}
-.prop__val{
-  float: left;
-  margin-bottom: 5px;
-}
+      span{
+        border-top: none;
+      }
+    }
+    &__name{
+      display: inline-block;
+      background-color: #5e5e5e;
+      padding: 0 5px;
+      border-radius: 5px;
+      float: left;
+      clear: both;
+      margin-right: 5px;
+      margin-bottom: 5px;
+    }
+    &__val{
+      float: left;
+      margin-bottom: 5px;
+    }
+  }
+
+  li.selected{
+    background-color: #00a92c;
+    color: #fff;
+    cursor: inherit;
+  }
 </style>

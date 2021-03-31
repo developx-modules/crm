@@ -1,4 +1,9 @@
-# crm
+# crm for order management
+
+Integrations:
+- provider api (https://api.oasiscatalog.com/docs/)
+- yandex delivery api (https://yandex.ru/dev/delivery-3/doc/dg/)
+
 
 ## Project setup
 ```
@@ -19,6 +24,3 @@ npm run build
 ```
 npm run lint
 ```
-
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
